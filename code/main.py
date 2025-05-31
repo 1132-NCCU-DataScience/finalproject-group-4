@@ -2,165 +2,274 @@ import os
 import glob
 import pandas as pd
 import numpy as np
+import joblib
+from scipy.integrate import trapezoid
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
-import joblib
+from pathlib import Path
 
 # 設定參數
-DATA_PATH = '/Users/zhangyongxuan/Desktop/data_science_project/data/time_series_data/'          # 原始資料目錄
-LABEL_FILE = '/Users/zhangyongxuan/Desktop/data_science_project/data/label/label_and_comments.xlsx'  # 評分標籤文件
-MODEL_PATH = '/Users/zhangyongxuan/Desktop/data_science_project/model/rf_model.pkl'  # 模型儲存路徑
-SAMPLE_RATE = 100               # 取樣頻率(Hz)
+DATA_PATH = '/Users/zhangyongxuan/Desktop/data_science_project/finalproject-group-4/data/time_series_data_csv/'
+LABEL_FILE = '/Users/zhangyongxuan/Desktop/data_science_project/finalproject-group-4/data/label/label_and_comments.xlsx'
+MODEL_DIR = '/Users/zhangyongxuan/Desktop/data_science_project/finalproject-group-4/results/model/'
+SAMPLE_RATE = 203
+
+# 建立目錄
+Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
 
 def load_and_process_data():
-    """載入並處理所有受測者資料"""
-    # 載入評分標籤
-    labels_df = pd.read_excel(LABEL_FILE, index_col='受測者ID')
-    
-    all_features = []
-    
-    # 遍歷所有受測者資料檔
-    for file_path in glob.glob(os.path.join(DATA_PATH, 'h*.txt')):
-        # 解析受測者ID
-        base_name = os.path.basename(file_path)
-        subject_id = base_name.split('_')[0][1:]  # 提取h後的數字
-        
-        # 讀取原始資料
-        df = pd.read_csv(file_path, header=None, delim_whitespace=True)
-        df.columns = [
-            'seq', 'vx', 'vy', 'vz', 
-            'seq_omega', 'wx', 'wy', 'wz'
+    """載入並處理所有受測者CSV資料"""
+    # 讀取標籤文件
+    labels_df = pd.read_excel(
+        LABEL_FILE,
+        index_col='Filename',
+        usecols=[
+            'Filename',
+            'Swing Path Accuracy',
+            'Swing Speed Smoothness',
+            'Wrist Rotation Timing Accuracy',
+            'Hit Timing Accuracy',
+            'Ball Contact Position Accuracy'
         ]
-        
-        # 特徵提取
-        features = extract_swing_features(df)
-        features['subject_id'] = int(subject_id)
-        
-        # 合併評分標籤
-        features = features.merge(
-            labels_df, 
-            left_on='subject_id', 
-            right_index=True
-        )
-        
-        all_features.append(features)
+    )
+    all_features = []
+
+    for csv_path in glob.glob(os.path.join(DATA_PATH, 'h*.csv')):
+        try:
+            base_name = os.path.basename(csv_path)
+            subject_id = base_name.split('_')[0]
+
+            # 檢查標籤是否存在
+            if subject_id not in labels_df.index:
+                print(f"Warning: {subject_id} has no corresponding label")
+                continue
+
+            # 讀取並處理CSV資料
+            df = pd.read_csv(csv_path)
+            required_columns = {'time', 'acc_x', 'acc_y', 'acc_z', 'gyro_x', 'gyro_y', 'gyro_z'}
+            if not required_columns.issubset(df.columns):
+                print(f"File {base_name} missing required columns, skipping")
+                continue
+
+            df = df.rename(columns={
+                'time': 'timestamp',
+                'acc_x': 'vx',
+                'acc_y': 'vy',
+                'acc_z': 'vz',
+                'gyro_x': 'wx',
+                'gyro_y': 'wy',
+                'gyro_z': 'wz'
+            })
+
+            # 特徵提取
+            features = extract_swing_features(df)
+            if features.empty:
+                continue
+
+            features['subject_id'] = subject_id
+
+            # 合併所有標籤數值
+            label_data = labels_df.loc[subject_id]
+            for col in label_data.index:
+                features[col] = label_data[col]
+            
+            all_features.append(features)
+
+        except Exception as e:
+            print(f"Error processing {base_name}: {str(e)}")
     
-    return pd.concat(all_features)
+    return pd.concat(all_features) if all_features else pd.DataFrame()
 
 def extract_swing_features(df):
-    """從原始數據提取揮拍特徵"""
+    """提取特徵"""
     features = []
     
-    # 按揮拍序號分組
-    for seq, group in df.groupby('seq'):
-        # 基本統計量
-        v_norm = np.sqrt(group[['vx','vy','vz']].pow(2).sum(axis=1))
-        w_norm = np.sqrt(group[['wx','wy','wz']].pow(2).sum(axis=1))
-        
-        # 時序特徵
-        peak_v_idx = v_norm.idxmax()
-        accel_phase = group.index[group.index <= peak_v_idx]
-        decel_phase = group.index[group.index > peak_v_idx]
-        
-        # 特徵字典
-        feat = {
-            'swing_seq': seq,
-            'max_v': v_norm.max(),
-            'mean_v': v_norm.mean(),
-            'max_w': w_norm.max(),
-            'accel_time': len(accel_phase)/SAMPLE_RATE,
-            'decel_time': len(decel_phase)/SAMPLE_RATE,
-            'v_peak_time': peak_v_idx/SAMPLE_RATE,
-            'w_integral': w_norm.sum()/SAMPLE_RATE
-        }
-        
-        features.append(feat)
+    # 驗證資料
+    if df.empty or 'timestamp' not in df.columns:
+        return pd.DataFrame()
     
-    return pd.DataFrame(features)
+    try:
+        # 計算合成量
+        df['v_norm'] = np.linalg.norm(df[['vx','vy','vz']], axis=1)
+        df['w_norm'] = np.linalg.norm(df[['wx','wy','wz']], axis=1)
+    except KeyError as e:
+        print(f"Missing sensor data columns: {str(e)}")
+        return pd.DataFrame()
+    
+    # 檢測揮拍分段
+    try:
+        time_diff = df['timestamp'].diff().fillna(0)
+        swing_groups = (time_diff > 50).cumsum()
+    except Exception as e:
+        print(f"Timestamp processing error: {str(e)}")
+        return pd.DataFrame()
+
+    for swing_id, group in df.groupby(swing_groups):
+        # 揮拍有效性檢查
+        if len(group) < 10 or group['v_norm'].max() < 1e-6:
+            continue
+            
+        try:
+            # 時間處理
+            time_sec = (group['timestamp'] - group['timestamp'].iloc[0]) / 1000.0
+            peak_idx = group['v_norm'].idxmax()
+            
+            # 特徵計算
+            if peak_idx >= len(time_sec):
+                continue
+
+            feat = {
+                'swing_id': swing_id,
+                'max_v': group['v_norm'].max(),
+                'mean_v': group['v_norm'].mean(),
+                'max_w': group['w_norm'].max(),
+                'accel_time': time_sec.iloc[peak_idx],
+                'decel_time': time_sec.iloc[-1] - time_sec.iloc[peak_idx],
+                'v_peak_time': time_sec.iloc[peak_idx],
+                'w_integral': trapezoid(group['w_norm'], time_sec)
+            }
+            features.append(feat)
+        except Exception as e:
+            print(f"Error extracting features for swing {swing_id}: {str(e)}")
+    
+    return pd.DataFrame(features) if features else pd.DataFrame()
 
 def train_model(data):
-    """訓練評分模型"""
-    # 分割特徵與標籤
-    X = data[['max_v','mean_v','max_w','accel_time','decel_time','v_peak_time','w_integral']]
-    y = data['Average_Score']
+    """訓練多目標評分模型"""
+    if data.empty:
+        raise ValueError("No valid training data")
     
+    # 定義特徵與多個目標
+    feature_cols = ['max_v','mean_v','max_w','accel_time','decel_time','v_peak_time','w_integral']
+    target_cols = [
+        'Swing Path Accuracy',
+        'Swing Speed Smoothness',
+        'Wrist Rotation Timing Accuracy',
+        'Hit Timing Accuracy',
+        'Ball Contact Position Accuracy'
+    ]
+    
+    X = data[feature_cols]
+    y = data[target_cols]
+
     # 資料標準化
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # 分割訓練測試集
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.2, random_state=42
+    X_scaled = pd.DataFrame(
+        scaler.fit_transform(X),
+        columns=X.columns
     )
     
-    # 建立模型
+    # 分割資料集
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, 
+        y, 
+        test_size=0.2, 
+        random_state=42
+    )
+    
+    # 輸出模型
     model = RandomForestRegressor(
         n_estimators=200,
         max_depth=8,
-        random_state=42
+        random_state=42,
+        n_jobs=-1
     )
     model.fit(X_train, y_train)
     
-    # 評估模型
+    # 模型評估（計算RMSE）
     y_pred = model.predict(X_test)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    print(f'Model RMSE: {rmse:.2f}')
+    print('Model RMSE per target:')
+    for i, col in enumerate(target_cols):
+        rmse = np.sqrt(mean_squared_error(y_test.iloc[:, i], y_pred[:, i]))
+        print(f"- {col}: {rmse:.2f}")
     
-    # 保存模型與標準化器
-    joblib.dump(model, MODEL_PATH)
-    joblib.dump(scaler, 'model/scaler.pkl')
+    # 保存模型
+    joblib.dump(model, os.path.join(MODEL_DIR, 'multi_target_model.pkl'))
+    joblib.dump(scaler, os.path.join(MODEL_DIR, 'scaler.pkl'))
     
     return model, scaler
 
-def predict_new_swing(data, model, scaler):
-    """預測新揮拍數據"""
-    # 提取特徵
-    features = extract_single_swing(data)
-    
-    # 標準化
-    scaled_data = scaler.transform([features])
-    
-    # 預測
-    score = model.predict(scaled_data)[0]
-    return round(score, 2)
+def predict_new_swing(raw_data, model, scaler):
+    """多目標評測"""
+    try:
+        features = extract_single_swing(raw_data)
+        features_df = pd.DataFrame([features], columns=scaler.feature_names_in_)
+        scaled_data = scaler.transform(features_df)
+        predictions = model.predict(scaled_data)[0]
+        
+        # 預測結果
+        return {
+            'Swing Path Accuracy': max(0.0, min(5.0, round(predictions[0], 2))),
+            'Swing Speed Smoothness': max(0.0, min(5.0, round(predictions[1], 2))),
+            'Wrist Rotation Timing Accuracy': max(0.0, min(5.0, round(predictions[2], 2))),
+            'Hit Timing Accuracy': max(0.0, min(5.0, round(predictions[3], 2))),
+            'Ball Contact Position Accuracy': max(0.0, min(5.0, round(predictions[4], 2)))
+        }
+    except Exception as e:
+        print(f"Prediction failed: {str(e)}")
+        return {
+            'Swing Path Accuracy': 0.0,
+            'Swing Speed Smoothness': 0.0,
+            'Wrist Rotation Timing Accuracy': 0.0,
+            'Hit Timing Accuracy': 0.0,
+            'Ball Contact Position Accuracy': 0.0
+        }
 
 def extract_single_swing(raw_data):
-    """從單筆揮拍數據提取特徵"""
-    df = pd.DataFrame(
-        [raw_data],
-        columns=['vx','vy','vz','wx','wy','wz']
-    )
-    
-    v_norm = np.sqrt(df[['vx','vy','vz']].pow(2).sum(axis=1))
-    w_norm = np.sqrt(df[['wx','wy','wz']].pow(2).sum(axis=1))
-    
-    return {
-        'max_v': v_norm.max(),
-        'mean_v': v_norm.mean(),
-        'max_w': w_norm.max(),
-        'accel_time': 0.15,  # 根據實際數據調整
-        'decel_time': 0.35,  # 根據實際數據調整
-        'v_peak_time': 0.18, # 根據實際數據調整
-        'w_integral': w_norm.sum()/SAMPLE_RATE
-    }
+    """單筆揮拍特徵提取"""
+    try:
+        if len(raw_data) != 6:
+            raise ValueError("需要6項數值（xyz速度以及xyz角速度）")
+            
+        vx, vy, vz, wx, wy, wz = map(float, raw_data)
+        
+        v_norm = np.sqrt(vx**2 + vy**2 + vz**2)
+        w_norm = np.sqrt(wx**2 + wy**2 + wz**2)
+        
+        return {
+            'max_v': v_norm,
+            'mean_v': v_norm,
+            'max_w': w_norm,
+            'accel_time': 0.15,
+            'decel_time': 0.35,
+            'v_peak_time': 0.18,
+            'w_integral': w_norm * 0.01
+        }
+    except Exception as e:
+        print(f"輸入資料錯誤: {str(e)}")
+        return {key: 0.0 for key in [
+            'max_v', 'mean_v', 'max_w',
+            'accel_time', 'decel_time',
+            'v_peak_time', 'w_integral'
+        ]}
 
-# 主程式流程
 if __name__ == "__main__":
-    # 訓練模型
-    print("正在載入資料與訓練模型...")
-    full_data = load_and_process_data()
-    model, scaler = train_model(full_data)
-    
-    # 範例預測
-    test_data = [
-        [-5.946, 1.15, 8.466, 0.378, 0.058, -1.066],  # 揮拍1
-        [-5.726, 1.148, 8.408, 0.318, 0.004, -1.066], # 揮拍2
-        # 可添加最多4組測試數據
-    ]
-    
-    print("\n即時評測結果：")
-    for i, data in enumerate(test_data, 1):
-        score = predict_new_swing(data, model, scaler)
-        print(f"揮拍{i}預測評分：{score}/5")
+    try:
+        print("=== Badminton Swing Analysis System ===")
+        print("Loading data...")
+        full_data = load_and_process_data()
+        
+        if not full_data.empty:
+            print(f"Loaded {len(full_data)} swings")
+            print("Training model...")
+            model, scaler = train_model(full_data)
+            
+            # 輸入測試資料
+            test_swings = [
+                [-5.946, 1.15, 8.466, 0.378, 0.058, -1.066],
+                [-5.726, 1.148, 8.408, 0.318, 0.004, -1.066]
+            ]
+            
+            print("\nReal-time Evaluation:")
+            for i, swing in enumerate(test_swings, 1):
+                result = predict_new_swing(swing, model, scaler)
+                print(f"Swing {i} Results:")
+                for k, v in result.items():
+                    print(f"- {k}: {v}/5")
+        else:
+            print("Error: No valid data loaded")
+            
+    except Exception as e:
+        print(f"System Error: {str(e)}")
