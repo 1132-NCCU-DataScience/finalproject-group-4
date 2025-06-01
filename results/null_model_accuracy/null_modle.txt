@@ -1,0 +1,6 @@
+Null Model RMSE per target: 
+- Swing Path Accuracy:1.32
+- Swing Speed Smoothness:1.23
+- Wrist Rotation Timing Accuracy:1.51
+- Hit Timing Accuracy:1.23
+- Ball Contact Position Accuracy:1.42
