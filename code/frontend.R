@@ -243,4 +243,106 @@ server <- function(input, output, session) {
     scores <- c(
       swing_path_accuracy(),
       swing_speed_smoothness(), 
-      wrist_rotati
+      wrist_rotation_timing(),
+      hit_timing_accuracy(),
+      contact_position_accuracy()
+    )
+    
+    # Create data frame for fmsb
+    radar_data <- data.frame(
+      rbind(
+        rep(100, 5),  # max values
+        rep(0, 5),    # min values
+        scores        # actual values
+      )
+    )
+    colnames(radar_data) <- c("Swing Path", "Speed Smooth", "Wrist Timing", 
+                              "Hit Timing", "Contact Position")
+    
+    # Create radar chart
+    radarchart(radar_data,
+               axistype = 1,
+               pcol = rgb(0.2, 0.5, 0.5, 0.9),
+               pfcol = rgb(0.2, 0.5, 0.5, 0.5),
+               plwd = 4,
+               cglcol = "grey",
+               cglty = 1,
+               axislabcol = "grey",
+               caxislabels = seq(0, 100, 25),
+               cglwd = 0.8,
+               vlcex = 0.8)
+  })
+  
+  # Sensor Data Visualization
+  output$sensor_plot <- renderPlot({
+    par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+    
+    # Acceleration plot
+    accel_data <- c(input$accel_x, input$accel_y, input$accel_z)
+    barplot(accel_data, 
+            names.arg = c("X", "Y", "Z"),
+            col = c("#FF6B6B", "#4ECDC4", "#45B7D1"),
+            main = "Acceleration (m/s²)",
+            ylim = c(-20, 20),
+            ylab = "Acceleration")
+    abline(h = 0, col = "black", lty = 2)
+    
+    # Gyroscope plot  
+    gyro_data <- c(input$gyro_x, input$gyro_y, input$gyro_z)
+    barplot(gyro_data,
+            names.arg = c("X", "Y", "Z"), 
+            col = c("#96CEB4", "#FFEAA7", "#DDA0DD"),
+            main = "Gyroscope (°/s)",
+            ylim = c(-500, 500),
+            ylab = "Angular Velocity")
+    abline(h = 0, col = "black", lty = 2)
+  })
+  
+  # Performance Trend
+  output$performance_trend <- renderPlot({
+    scores <- c(
+      swing_path_accuracy(),
+      swing_speed_smoothness(),
+      wrist_rotation_timing(), 
+      hit_timing_accuracy(),
+      contact_position_accuracy()
+    )
+    
+    metrics <- c("Swing Path", "Speed Smooth", "Wrist Timing", 
+                 "Hit Timing", "Contact Position")
+    
+    par(mar = c(8, 4, 2, 1))
+    barplot(scores,
+            names.arg = metrics,
+            col = rainbow(5, alpha = 0.7),
+            main = "Current Performance Scores",
+            ylab = "Score (%)",
+            ylim = c(0, 100),
+            las = 2,
+            cex.names = 0.8)
+    abline(h = seq(0, 100, 20), col = "gray", lty = 2)
+  })
+  
+  # Detailed Analysis Table
+  output$detailed_table <- DT::renderDataTable({
+    data.frame(
+      Metric = c("Swing Path Accuracy", "Swing Speed Smoothness", 
+                 "Wrist Rotation Timing", "Hit Timing Accuracy", 
+                 "Ball Contact Position"),
+      Score = c(swing_path_accuracy(), swing_speed_smoothness(),
+                wrist_rotation_timing(), hit_timing_accuracy(),
+                contact_position_accuracy()),
+      Status = ifelse(c(swing_path_accuracy(), swing_speed_smoothness(),
+                        wrist_rotation_timing(), hit_timing_accuracy(),
+                        contact_position_accuracy()) >= 75, "Excellent",
+                      ifelse(c(swing_path_accuracy(), swing_speed_smoothness(),
+                               wrist_rotation_timing(), hit_timing_accuracy(),
+                               contact_position_accuracy()) >= 50, "Good", "Needs Improvement")),
+      Acceleration_Input = paste("X:", input$accel_x, "Y:", input$accel_y, "Z:", input$accel_z),
+      Gyroscope_Input = paste("X:", input$gyro_x, "Y:", input$gyro_y, "Z:", input$gyro_z)
+    )
+  }, options = list(pageLength = 10, scrollX = TRUE))
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
