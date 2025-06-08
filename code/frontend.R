@@ -12,110 +12,147 @@ library(htmltools)
 library(flexdashboard)
 
 # UI
-ui <- navbarPage(
-  title = "資料科學 第四組 羽球揮拳預測系統",
-  theme = shinytheme("flatly"),
-  
-  tabPanel("Swing Analysis",
-           fluidPage(
-             tags$head(tags$style(HTML("
-              .slider-container {
-                background: #F5F5F5; border-radius: 10px; padding: 20px;
-                margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              }
-              .metric-box {
-                background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-                color: white; padding: 15px; border-radius: 10px;
-                margin: 5px; text-align: center;
-              }
-              .metric-value { font-size: 24px; font-weight: bold; }
-              .metric-label { font-size: 12px; opacity: 0.8; }
-              .badminton-slider .irs-handle > i {
-                display: none !important;  /* 🔥 removes default gray circle */
-              }
-            
-              .badminton-slider .irs-handle::before {
-                content: '🏸';
-                font-size: 30px;        /* 🎯 increase size here */
-                position: absolute;
-                top: -12px;             /* adjust vertical alignment */
-                left: -10px;
-              }
-            
-              .badminton-slider .irs-handle {
-                background: transparent !important;
-                border: none !important;
-              }
-            "))),
-             
-             fluidRow(
-               column(3,
-                      div(class = "slider-container",
-                          h3("Sensor Data Input", style = "color: #3c8dbc;"),
-                          h4("Acceleration Sensors", style = "color: #666;"),
-                          div(class = "badminton-slider",
-                              sliderInput("accel_x", "Acceleration_X (m/s²):", -20, 20, 0, 0.1),
-                              sliderInput("accel_y", "Acceleration_Y (m/s²):", -20, 20, 0, 0.1),
-                              sliderInput("accel_z", "Acceleration_Z (m/s²):", -20, 20, 9.8, 0.1),
-                              hr(),
-                              h4("Gyroscope Sensors", style = "color: #666;"),
-                              sliderInput("gyro_x", "Gyroscope_X (°/s):", -500, 500, 0, 1),
-                              sliderInput("gyro_y", "Gyroscope_Y (°/s):", -500, 500, 0, 1),
-                              sliderInput("gyro_z", "Gyroscope_Z (°/s):", -500, 500, 0, 1)
-                          ),
-                      )
-               ),
-               column(9,
-                      fluidRow(
-                        column(12,
-                               h3("Performance Metrics", style = "color: #3c8dbc; text-align: left; margin-bottom: 20px;"),
-                               
-                               # Wrap gauges in a flexbox-style row using HTML + CSS
-                               div(style = "display: flex; justify-content: space-between; gap: 10px;",
-                                   div(style = "flex: 1;", gaugeOutput("gauge_path")),
-                                   div(style = "flex: 1;", gaugeOutput("gauge_speed")),
-                                   div(style = "flex: 1;", gaugeOutput("gauge_rotation")),
-                                   div(style = "flex: 1;", gaugeOutput("gauge_hit")),
-                                   div(style = "flex: 1;", gaugeOutput("gauge_contact"))
-                               )
+ui <- tagList(
+  navbarPage(
+    title = "資料科學 第四組 羽球揮拳預測系統",
+    theme = shinytheme("flatly"),
+    
+    tabPanel("Swing Analysis",
+             fluidPage(
+               tags$head(tags$style(HTML("
+          .slider-container {
+            background: #F5F5F5; border-radius: 10px; padding: 20px;
+            margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .metric-box {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 15px; border-radius: 10px;
+            margin: 5px; text-align: center;
+          }
+          .metric-value { font-size: 24px; font-weight: bold; }
+          .metric-label { font-size: 12px; opacity: 0.8; }
+          .badminton-slider .irs-handle > i {
+            display: none !important;  /* 🔥 removes default gray circle */
+          }
+        
+          .badminton-slider .irs-handle::before {
+            content: '🏸';
+            font-size: 30px;        /* 🎯 increase size here */
+            position: absolute;
+            top: -12px;             /* adjust vertical alignment */
+            left: -10px;
+          }
+        
+          .badminton-slider .irs-handle {
+            background: transparent !important;
+            border: none !important;
+          }
+        "))),
+               
+               fluidRow(
+                 column(3,
+                        div(class = "slider-container",
+                            h3("Sensor Data Input", style = "color: #3c8dbc;"),
+                            h4("Acceleration Sensors", style = "color: #666;"),
+                            div(class = "badminton-slider",
+                                sliderInput("accel_x", "Acceleration_X (m/s²):", -20, 20, 0, 0.1),
+                                sliderInput("accel_y", "Acceleration_Y (m/s²):", -20, 20, 0, 0.1),
+                                sliderInput("accel_z", "Acceleration_Z (m/s²):", -20, 20, 9.8, 0.1),
+                                hr(),
+                                h4("Gyroscope Sensors", style = "color: #666;"),
+                                sliderInput("gyro_x", "Gyroscope_X (°/s):", -500, 500, 0, 1),
+                                sliderInput("gyro_y", "Gyroscope_Y (°/s):", -500, 500, 0, 1),
+                                sliderInput("gyro_z", "Gyroscope_Z (°/s):", -500, 500, 0, 1)
+                            ),
                         )
-                      ),
-                      fluidRow(
-                        style = "margin-top: -30px; margin-bottom: 10px;",
-                        column(6,
-                               div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 0px;",
-                                   h4("Overall Performance Radar", style = "color: #3c8dbc; text-align: center;"),
-                                   plotOutput("radar_chart", height = "275px")
-                               ),
-                               div(style = "margin-top: 0px;", uiOutput("score_comment_box"))
+                 ),
+                 column(9,
+                        fluidRow(
+                          column(12,
+                                 h3("Performance Metrics", style = "color: #3c8dbc; text-align: left; margin-bottom: 20px;"),
+                                 
+                                 # Wrap gauges in a flexbox-style row using HTML + CSS
+                                 div(style = "display: flex; justify-content: space-between; gap: 10px;",
+                                     div(style = "flex: 1;", gaugeOutput("gauge_path")),
+                                     div(style = "flex: 1;", gaugeOutput("gauge_speed")),
+                                     div(style = "flex: 1;", gaugeOutput("gauge_rotation")),
+                                     div(style = "flex: 1;", gaugeOutput("gauge_hit")),
+                                     div(style = "flex: 1;", gaugeOutput("gauge_contact"))
+                                 )
+                          )
                         ),
-                        column(6,
-                               div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 0px;",
-                                   h4("Feature Importance Heatmap", style = "color: #3c8dbc; text-align: center;"),
-                                   plotOutput("feature_heatmap", height = "275px")
-                               ),
-                               div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 20px;",
-                                   h4("Swing Metric Distributions", style = "color: #3c8dbc; text-align: center;"),
-                                   plotOutput("boxplot_chart", height = "275px")
-                               )
+                        fluidRow(
+                          style = "margin-top: -30px; margin-bottom: 10px;",
+                          column(6,
+                                 div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 0px;",
+                                     h4("Overall Performance Radar", style = "color: #3c8dbc; text-align: center;"),
+                                     plotOutput("radar_chart", height = "275px")
+                                 ),
+                                 div(style = "margin-top: 0px;",uiOutput("score_comment_box"))
+                          ),
+                          column(6,
+                                 div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 0px;",
+                                     h4("Feature Importance Heatmap", style = "color: #3c8dbc; text-align: center;"),
+                                     plotOutput("feature_heatmap", height = "275px")
+                                 ),
+                                 div(style = "margin-top: 0px; background: white; border-radius: 10px; padding: 20px;",
+                                     h4("Swing Metric Distributions", style = "color: #3c8dbc; text-align: center;"),
+                                     plotOutput("boxplot_chart", height = "275px")
+                                 )
+                          )
                         )
-                      )
+                 )
                )
              )
-           )
+    ),
+    
+    # Additional tab for detailed analysis
+    tabPanel("Detailed Analysis",
+             fluidPage(
+               h2("Advanced Swing Analysis", style = "color: #3c8dbc;"),
+               fluidRow(
+                 column(12,
+                        DT::dataTableOutput("detailed_table")
+                 )
+               )
+             )
+    )
   ),
   
-  # Additional tab for detailed analysis
-  tabPanel("Detailed Analysis",
-           fluidPage(
-             h2("Advanced Swing Analysis", style = "color: #3c8dbc;"),
-             fluidRow(
-               column(12,
-                      DT::dataTableOutput("detailed_table")
-               )
-             )
-           )
-  )
+  tags$footer(
+    style = "
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #2c3e50;
+    color: white;
+    padding: 6px 12px;
+    text-align: center;
+    font-size: 14px;
+    z-index: 9999;
+    height: 36px;
+  ",
+    div(
+      style = "display: flex; justify-content: center; align-items: center; gap: 6px;",  # 🔥 reduce gap here
+      span("張詠軒，任善研，陳柏淵，林祖平，王煜凱，尤敏米茲夠"),
+      tags$a(
+        href = "https://github.com/1132-NCCU-DataScience/finalproject-group-4",
+        target = "_blank",
+        tags$img(src = "github-icon.png", height = "20px", style = "margin-left: 4px;")
+      ),
+      tags$a(
+        href = "poster.jpg",
+        target = "_blank",
+        tags$img(
+          src = "poster-icon.png",
+          height = "23px",  # match GitHub icon
+          width = "22px",
+          style = "margin-left: 3px; object-fit: contain; margin-top: 1.5px;"
+        )
+      )
+    )
+  ),
 )
 
 # Server
@@ -267,9 +304,17 @@ server <- function(input, output, session) {
     fluidRow(
       column(12,
              div(
-               style = "background: #f9f9f9; padding: 20px; border-radius: 12px; 
+               style = "background: #FFF7E9; padding: 20px; border-radius: 12px; 
                  box-shadow: 0 2px 6px rgba(0,0,0,0.1); 
                  display: flex; justify-content: space-between; align-items: center; min-height:140px;",
+               
+               # 🖼 Left: Circle image
+               tags$img(
+                 src = "badminton-circle.png",  
+                 height = "80px",
+                 width = "80px",
+                 style = "border-radius: 50%; object-fit: cover; border: 2px solid black;"
+               ),
                
                # Left: Average Score
                div(
