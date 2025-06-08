@@ -13,40 +13,40 @@ library(flexdashboard)
 
 # UI
 ui <- navbarPage(
-  title = "資料科學 第四組 網球揮拳預測系統",
+  title = "資料科學 第四組 羽球揮拳預測系統",
   theme = shinytheme("flatly"),
   
   tabPanel("Swing Analysis",
            fluidPage(
              tags$head(tags$style(HTML("
-        .slider-container {
-          background: #F5F5F5; border-radius: 10px; padding: 20px;
-          margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .metric-box {
-          background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-          color: white; padding: 15px; border-radius: 10px;
-          margin: 5px; text-align: center;
-        }
-        .metric-value { font-size: 24px; font-weight: bold; }
-        .metric-label { font-size: 12px; opacity: 0.8; }
-        .badminton-slider .irs-handle > i {
-          display: none !important;  /* 🔥 removes default gray circle */
-        }
-      
-        .badminton-slider .irs-handle::before {
-          content: '🏸';
-          font-size: 30px;        /* 🎯 increase size here */
-          position: absolute;
-          top: -12px;             /* adjust vertical alignment */
-          left: -10px;
-        }
-      
-        .badminton-slider .irs-handle {
-          background: transparent !important;
-          border: none !important;
-        }
-      "))),
+              .slider-container {
+                background: #F5F5F5; border-radius: 10px; padding: 20px;
+                margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              .metric-box {
+                background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+                color: white; padding: 15px; border-radius: 10px;
+                margin: 5px; text-align: center;
+              }
+              .metric-value { font-size: 24px; font-weight: bold; }
+              .metric-label { font-size: 12px; opacity: 0.8; }
+              .badminton-slider .irs-handle > i {
+                display: none !important;  /* 🔥 removes default gray circle */
+              }
+            
+              .badminton-slider .irs-handle::before {
+                content: '🏸';
+                font-size: 30px;        /* 🎯 increase size here */
+                position: absolute;
+                top: -12px;             /* adjust vertical alignment */
+                left: -10px;
+              }
+            
+              .badminton-slider .irs-handle {
+                background: transparent !important;
+                border: none !important;
+              }
+            "))),
              
              fluidRow(
                column(3,
@@ -103,6 +103,18 @@ ui <- navbarPage(
                )
              )
            )
+  ),
+  
+  # Additional tab for detailed analysis
+  tabPanel("Detailed Analysis",
+           fluidPage(
+             h2("Advanced Swing Analysis", style = "color: #3c8dbc;"),
+             fluidRow(
+               column(12,
+                      DT::dataTableOutput("detailed_table")
+               )
+             )
+           )
   )
 )
 
@@ -115,19 +127,19 @@ server <- function(input, output, session) {
   contact_position_accuracy <- reactive({ round(max(0, min(100, 100 - (abs(input$accel_z - 9.8) + abs(input$gyro_x) * 0.1) * 2)), 1) })
   
   output$gauge_path <- renderGauge({
-    gauge(swing_path_accuracy(), min = 0, max = 100, symbol = "%", label = "Swing Path Accuracy", gaugeSectors(success = c(80, 100), warning = c(50, 79), danger = c(0, 49), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
+    gauge(swing_path_accuracy(), min = 0, max = 100, symbol = "%", label = "Swing Path Accuracy", gaugeSectors(success = c(80, 100), warning = c(50, 79.9), danger = c(0, 49.9), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
   })
   output$gauge_speed <- renderGauge({
-    gauge(swing_speed_smooth(), min = 0, max = 100, symbol = "%", label = "Swing Speed Smooth", gaugeSectors(success = c(80, 100), warning = c(50, 79), danger = c(0, 49), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
+    gauge(swing_speed_smooth(), min = 0, max = 100, symbol = "%", label = "Swing Speed Smooth", gaugeSectors(success = c(80, 100), warning = c(50, 79.9), danger = c(0, 49.9), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
   })
   output$gauge_rotation <- renderGauge({
-    gauge(wrist_rotation_timing(), min = 0, max = 100, symbol = "%", label = "Wrist Rotation Timing", gaugeSectors(success = c(80, 100), warning = c(50, 79), danger = c(0, 49), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
+    gauge(wrist_rotation_timing(), min = 0, max = 100, symbol = "%", label = "Wrist Rotation Timing", gaugeSectors(success = c(80, 100), warning = c(50, 79.9), danger = c(0, 49.9), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
   })
   output$gauge_hit <- renderGauge({
-    gauge(hit_timing_accuracy(), min = 0, max = 100, symbol = "%", label = "Hit Timing Accuracy", gaugeSectors(success = c(80, 100), warning = c(50, 79), danger = c(0, 49), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
+    gauge(hit_timing_accuracy(), min = 0, max = 100, symbol = "%", label = "Hit Timing Accuracy", gaugeSectors(success = c(80, 100), warning = c(50, 79.9), danger = c(0, 49.9), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
   })
   output$gauge_contact <- renderGauge({
-    gauge(contact_position_accuracy(), min = 0, max = 100, symbol = "%", label = "Ball Contact Position", gaugeSectors(success = c(80, 100), warning = c(50, 79), danger = c(0, 49), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
+    gauge(contact_position_accuracy(), min = 0, max = 100, symbol = "%", label = "Ball Contact Position", gaugeSectors(success = c(80, 100), warning = c(50, 79.9), danger = c(0, 49.9), colors = c("#b7e4c7", "#ffe599", "#f4cccc")))
   })
   
   output$radar_chart <- renderPlot({
@@ -324,6 +336,26 @@ server <- function(input, output, session) {
       ) +
       labs(x = "Metric", y = "Score", fill = "Metric")
   })
+  
+  # Detailed Analysis Table
+  output$detailed_table <- DT::renderDataTable({
+    data.frame(
+      Metric = c("Swing Path Accuracy", "Swing Speed Smoothness", 
+                 "Wrist Rotation Timing", "Hit Timing Accuracy", 
+                 "Ball Contact Position"),
+      Score = c(swing_path_accuracy(), swing_speed_smooth(),
+                wrist_rotation_timing(), hit_timing_accuracy(),
+                contact_position_accuracy()),
+      Status = ifelse(c(swing_path_accuracy(), swing_speed_smooth(),
+                        wrist_rotation_timing(), hit_timing_accuracy(),
+                        contact_position_accuracy()) >= 75, "Excellent",
+                      ifelse(c(swing_path_accuracy(), swing_speed_smooth(),
+                               wrist_rotation_timing(), hit_timing_accuracy(),
+                               contact_position_accuracy()) >= 50, "Good", "Needs Improvement")),
+      Acceleration_Input = paste("X:", input$accel_x, "Y:", input$accel_y, "Z:", input$accel_z),
+      Gyroscope_Input = paste("X:", input$gyro_x, "Y:", input$gyro_y, "Z:", input$gyro_z)
+    )
+  }, options = list(pageLength = 10, scrollX = TRUE))
 }
 
 shinyApp(ui = ui, server = server)
