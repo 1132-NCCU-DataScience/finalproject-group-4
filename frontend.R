@@ -26,7 +26,7 @@ scaler <- readRDS(scaler_path)
 # UI
 ui <- tagList(
   navbarPage(
-    title = "資料科學 第四組 羽球揮拳預測系統",
+    title = "資料科學 第四組 羽球揮拍預測系統",
     theme = shinytheme("flatly"),
     
     tabPanel("Swing Analysis",
