@@ -391,12 +391,12 @@ main <- function() {
   }
 }
 
-# Run the main function
-if (interactive()) { # only run if in an interactive R session, or source the file to run.
+# Run the main function ONLY when not in Shiny
+if (interactive() && !exists("shinyApp")) {
   tryCatch({
     main()
   }, error = function(e) {
     message(paste("System Error:", e$message))
-    print(sys.calls()) # Print call stack for debugging
+    print(sys.calls())
   })
 }
