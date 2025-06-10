@@ -65,7 +65,7 @@ https://oscarwyk.shinyapps.io/finalproject-group-4/
 - acc_x, acc_y, acc_z（加速度）
 - gyro_x, gyro_y, gyro_z（角速度）
 
-![蒐集資料](docs/collect_data.png)
+<img src="docs/collect_data.png" alt="蒐集資料" style="width:70%;" />
 
 ### Feature extraction
 目標是將一整段時間序列感測資料（含加速度與角速度）切成多個揮拍段，再將每段揮拍的原始資料轉換為七個數值特徵
