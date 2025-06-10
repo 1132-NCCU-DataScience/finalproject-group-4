@@ -18,6 +18,8 @@ Please provide an example command or a few commands to reproduce your analysis, 
 Rscript code/your_script.R --input data/training --output results/performance.tsv
 ```
 
+Deploy link: https://oscarwyk.shinyapps.io/finalproject-group-4/
+
 ## Folder organization and its related description
 idea by Noble WS (2009) [A Quick Guide to Organizing Computational Biology Projects.](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000424) PLoS Comput Biol 5(7): e1000424.
 
