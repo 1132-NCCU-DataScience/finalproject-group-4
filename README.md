@@ -13,27 +13,18 @@ The goals of this project.
 |尤敏米茲夠|資訊碩一|113753220|團隊|
 
 ## Quick start
-Please provide an example command or a few commands to reproduce your analysis, such as the following R script:
-```R
-Rscript code/your_script.R --input data/training --output results/performance.tsv
-```
-
 Deploy link: https://oscarwyk.shinyapps.io/finalproject-group-4/
 
 ## Folder organization and its related description
-idea by Noble WS (2009) [A Quick Guide to Organizing Computational Biology Projects.](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000424) PLoS Comput Biol 5(7): e1000424.
 
 ### docs
-* Your presentation, 1132_DS-FP_groupID.ppt/pptx/pdf (i.e.,1132_DS-FP_group1.ppt), by **06.10**
-* Any related document for the project, i.e.,
-  * discussion log
-  * software user guide
+* 1132_DS-FP_group4.pdf
 
 ### data
-* Input
-  * Source
-  * Format
-  * Size
+* label
+  * label_and_comments.xlsx
+* data
+  * time_series_data_csv
 
 ### code
 * Analysis steps
@@ -43,9 +34,8 @@ idea by Noble WS (2009) [A Quick Guide to Organizing Computational Biology Proje
 * What is a null model for comparison?
 
 ### results
-* What is your performance?
-* Is the improvement significant?
+* Although time series analysis is less precise than image processing, it offers advantages such as convenience and low cost.
+* When combined with platform-based deployment and continuous data accumulation, it can enable the development of personalized models,helping self-learners improve more efficiently, swing correctly, and reduce the risk of injury.
 
 ## References
-* Packages you use
-* Related publications
+* Cryer, J. D., & Chan, K.-S. (2008). Time series analysis with applications in R (2nd ed.). Springer.
